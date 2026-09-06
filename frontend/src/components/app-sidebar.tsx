@@ -3,13 +3,9 @@ import { clearAuth } from "@/lib/auth";
 import {
   LayoutDashboard,
   MessagesSquare,
-  CalendarDays,
   Users,
-  BookOpen,
   Tag,
-  UserCircle,
   LogOut,
-  Bot,
 } from "lucide-react";
 import {
   Sidebar,
@@ -24,17 +20,17 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 
+// Ocultos do menu a pedido do GCT: Agenda (/app/agenda), Meu Assistente
+// (/app/assistente), Minha oficina (/app/configuracoes/conhecimento) e
+// Clientes (/app/configuracoes/clientes). As telas seguem existindo e
+// funcionando; para reexibir, basta devolver os itens aos arrays abaixo.
 const main = [
   { title: "Dashboard", url: "/app", icon: LayoutDashboard, exact: true },
   { title: "Conversas", url: "/app/conversas", icon: MessagesSquare },
-  { title: "Agenda", url: "/app/agenda", icon: CalendarDays },
-  { title: "Meu Assistente", url: "/app/assistente", icon: Bot },
 ];
 
 const config = [
   { title: "Usuários", url: "/app/configuracoes/usuarios", icon: Users },
-  { title: "Minha oficina", url: "/app/configuracoes/conhecimento", icon: BookOpen },
-  { title: "Clientes", url: "/app/configuracoes/clientes", icon: UserCircle },
   { title: "Etiquetas", url: "/app/configuracoes/etiquetas", icon: Tag },
 ];
 
