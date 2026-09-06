@@ -1,0 +1,11 @@
+.env
+.env.*
+!.env.example
+Credencias_db.md
+node_modules/
+.venv/
+__pycache__/
+dist/
+
+# Material de cliente: fica no banco e no disco, nao no repositorio
+script_doutor_hebert.md
