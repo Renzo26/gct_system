@@ -18,7 +18,7 @@ const STORAGE_KEY = "gct_assistant_history";
 const BOA_VINDA: Msg = {
   id: "boas-vindas",
   papel: "assistant",
-  texto: "Olá! Sou o assistente da GCT 👋 Tenho acesso aos dados da sua oficina em tempo real. Pode me perguntar sobre clientes, agendamentos, serviços mais realizados, conversas abertas e muito mais!",
+  texto: "Olá! Sou o assistente da GCT 👋 Tenho acesso aos dados do cliente selecionado em tempo real. Pode me perguntar sobre contatos, agendamentos, serviços mais realizados, conversas abertas e muito mais!",
   hora: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
 };
 

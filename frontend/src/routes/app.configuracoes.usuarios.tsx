@@ -91,7 +91,7 @@ function UsuariosPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-2xl font-bold">Usuários</h1>
-          <p className="text-sm text-muted-foreground">Gerencie a equipe da oficina.</p>
+          <p className="text-sm text-muted-foreground">Gerencie a equipe.</p>
         </div>
         <Button onClick={() => { setNovoOpen(true); setNovoRole("AGENT"); }}>
           <Plus className="mr-1 h-4 w-4" /> Novo usuário

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Search, Car, Phone, Calendar, FileText, User, Loader2, Wrench, Hash } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Phone, Calendar, FileText, User, Loader2, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,9 +21,6 @@ type Cliente = {
   id: string;
   nome: string;
   telefone: string | null;
-  veiculo: string | null;
-  ano_veiculo: string | null;
-  placa: string | null;
   ultimo_atendimento: string | null;
   servico_realizado: string | null;
   resumo: string | null;
@@ -46,7 +43,7 @@ function Clientes() {
   }, []);
 
   const filtered = list.filter((c) =>
-    [c.nome, c.telefone, c.placa, c.veiculo]
+    [c.nome, c.telefone]
       .some((v) => v?.toLowerCase().includes(busca.toLowerCase()))
   );
 
@@ -56,9 +53,6 @@ function Clientes() {
     const body = {
       nome: String(f.get("nome")),
       telefone: String(f.get("telefone") || ""),
-      veiculo: String(f.get("veiculo") || ""),
-      ano_veiculo: String(f.get("ano_veiculo") || ""),
-      placa: String(f.get("placa") || ""),
       ultimo_atendimento: String(f.get("ultimo_atendimento") || "") || null,
       servico_realizado: String(f.get("servico_realizado") || ""),
       resumo: String(f.get("resumo") || ""),
@@ -92,14 +86,14 @@ function Clientes() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl font-bold">Clientes</h1>
-          <p className="text-sm text-muted-foreground">Histórico de clientes e veículos.</p>
+          <p className="text-sm text-muted-foreground">Histórico de contatos e atendimentos.</p>
         </div>
         <Button onClick={abrirNovo}><Plus className="mr-1 h-4 w-4" /> Novo cliente</Button>
       </div>
 
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por nome, placa..." className="pl-9" />
+        <Input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por nome ou telefone..." className="pl-9" />
       </div>
 
       <div className="rounded-xl border bg-card">
@@ -111,8 +105,6 @@ function Clientes() {
               <TableRow>
                 <TableHead>Cliente</TableHead>
                 <TableHead>Telefone</TableHead>
-                <TableHead>Veículo / Ano</TableHead>
-                <TableHead>Placa</TableHead>
                 <TableHead>Último atendimento</TableHead>
                 <TableHead />
               </TableRow>
@@ -120,7 +112,7 @@ function Clientes() {
             <TableBody>
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-10 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={4} className="py-10 text-center text-sm text-muted-foreground">
                     Nenhum cliente cadastrado.
                   </TableCell>
                 </TableRow>
@@ -136,11 +128,6 @@ function Clientes() {
                     </button>
                   </TableCell>
                   <TableCell>{c.telefone ?? "—"}</TableCell>
-                  <TableCell>
-                    {c.veiculo ?? "—"}
-                    {c.ano_veiculo ? <span className="ml-1 text-xs text-muted-foreground">({c.ano_veiculo})</span> : null}
-                  </TableCell>
-                  <TableCell>{c.placa ?? "—"}</TableCell>
                   <TableCell>{c.ultimo_atendimento ?? "—"}</TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="icon" onClick={() => abrirEdit(c)}><Pencil className="h-4 w-4" /></Button>
@@ -159,18 +146,11 @@ function Clientes() {
           <DialogHeader><DialogTitle>{edit ? "Editar cliente" : "Novo cliente"}</DialogTitle></DialogHeader>
           <form onSubmit={salvar} className="space-y-3">
             <div className="space-y-2"><Label>Nome</Label><Input name="nome" required defaultValue={edit?.nome} /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2"><Label>Telefone</Label><Input name="telefone" defaultValue={edit?.telefone ?? ""} /></div>
-              <div className="space-y-2"><Label>Placa</Label><Input name="placa" defaultValue={edit?.placa ?? ""} /></div>
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="col-span-2 space-y-2"><Label>Veículo</Label><Input name="veiculo" placeholder="Ex: Onix, Fiesta..." defaultValue={edit?.veiculo ?? ""} /></div>
-              <div className="space-y-2"><Label>Ano</Label><Input name="ano_veiculo" placeholder="2024" maxLength={4} defaultValue={edit?.ano_veiculo ?? ""} /></div>
-            </div>
+            <div className="space-y-2"><Label>Telefone</Label><Input name="telefone" defaultValue={edit?.telefone ?? ""} /></div>
             <div className="space-y-2"><Label>Último atendimento</Label><Input name="ultimo_atendimento" type="date" defaultValue={edit?.ultimo_atendimento ?? ""} /></div>
             <div className="space-y-2">
               <Label>Serviço realizado</Label>
-              <Input name="servico_realizado" placeholder="Ex: Troca de óleo, alinhamento..." defaultValue={edit?.servico_realizado ?? ""} />
+              <Input name="servico_realizado" placeholder="Ex: Avaliação inicial, retorno..." defaultValue={edit?.servico_realizado ?? ""} />
             </div>
             <div className="space-y-2"><Label>Observações</Label><Textarea name="resumo" placeholder="Informações adicionais sobre o cliente ou atendimento..." defaultValue={edit?.resumo ?? ""} /></div>
             <DialogFooter>
@@ -200,16 +180,8 @@ function Clientes() {
               <div className="grid gap-3">
                 {[
                   { Icon: Phone, label: "Telefone", value: perfil.telefone },
-                  {
-                    Icon: Car,
-                    label: "Veículo",
-                    value: perfil.veiculo
-                      ? `${perfil.veiculo}${perfil.ano_veiculo ? ` (${perfil.ano_veiculo})` : ""}`
-                      : null,
-                  },
-                  { Icon: Hash, label: "Placa", value: perfil.placa },
                   { Icon: Calendar, label: "Último atendimento", value: perfil.ultimo_atendimento },
-                  { Icon: Wrench, label: "Serviço realizado", value: perfil.servico_realizado },
+                  { Icon: ClipboardList, label: "Serviço realizado", value: perfil.servico_realizado },
                   { Icon: FileText, label: "Observações", value: perfil.resumo },
                 ].map(({ Icon, label, value }) => (
                   <div key={label} className="flex items-start gap-3 rounded-lg bg-muted/50 px-3 py-2.5">

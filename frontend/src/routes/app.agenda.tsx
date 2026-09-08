@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Plus, Trash2, Loader2, Car, Phone, Pencil } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Trash2, Loader2, Phone, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
@@ -20,7 +20,6 @@ type Evento = {
   hora: string;
   titulo: string;
   cliente: string;
-  veiculo: string | null;
   telefone: string | null;
 };
 
@@ -76,7 +75,6 @@ function Agenda() {
         hora: String(f.get("hora")),
         titulo: String(f.get("titulo")),
         cliente: String(f.get("cliente")),
-        veiculo: String(f.get("veiculo") || "") || null,
         telefone: String(f.get("telefone") || "") || null,
       });
       setEventos((arr) => [...arr, novo]);
@@ -100,7 +98,6 @@ function Agenda() {
       hora: toEdit.hora,
       titulo: toEdit.titulo,
       cliente: toEdit.cliente,
-      veiculo: String(f.get("veiculo") || "") || null,
       telefone: String(f.get("telefone") || "") || null,
     };
     try {
@@ -205,12 +202,6 @@ function Agenda() {
                   <div className="min-w-0 flex-1">
                     <p className="font-medium">{e.titulo}</p>
                     <p className="text-sm text-muted-foreground">{e.cliente}</p>
-                    {e.veiculo && (
-                      <p className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-                        <Car className="h-3 w-3 shrink-0" />
-                        {e.veiculo}
-                      </p>
-                    )}
                     {e.telefone && (
                       <a
                         href={(() => {
@@ -249,10 +240,7 @@ function Agenda() {
           <form onSubmit={criar} className="space-y-3">
             <div className="space-y-2"><Label>Cliente</Label><Input name="cliente" required /></div>
             <div className="space-y-2"><Label>Serviço</Label><Input name="titulo" required /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2"><Label>Veículo</Label><Input name="veiculo" placeholder="Ex: Onix, Fiesta..." /></div>
-              <div className="space-y-2"><Label>Telefone</Label><Input name="telefone" placeholder="11999999999" /></div>
-            </div>
+            <div className="space-y-2"><Label>Telefone</Label><Input name="telefone" placeholder="11999999999" /></div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2"><Label>Data</Label><Input name="data" type="date" required defaultValue={diaSel} /></div>
               <div className="space-y-2"><Label>Hora</Label><Input name="hora" type="time" required /></div>
@@ -271,10 +259,6 @@ function Agenda() {
         <DialogContent className="max-w-sm">
           <DialogHeader><DialogTitle>Editar agendamento</DialogTitle></DialogHeader>
           <form onSubmit={salvarEdit} className="space-y-3">
-            <div className="space-y-2">
-              <Label>Veículo</Label>
-              <Input name="veiculo" placeholder="Ex: Onix 2014, Fiesta..." defaultValue={toEdit?.veiculo ?? ""} />
-            </div>
             <div className="space-y-2">
               <Label>Telefone (WhatsApp)</Label>
               <Input name="telefone" placeholder="5511999999999" defaultValue={toEdit?.telefone ?? ""} />

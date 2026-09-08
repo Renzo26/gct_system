@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/api";
 
 export const Route = createFileRoute("/app/configuracoes/conhecimento")({
-  head: () => ({ meta: [{ title: "Minha oficina — GCT" }] }),
+  head: () => ({ meta: [{ title: "Minha empresa — GCT" }] }),
   component: Conhecimento,
 });
 
@@ -42,7 +42,7 @@ function Conhecimento() {
   useEffect(() => {
     api.get<Settings>("/workshop")
       .then((d) => setData({ ...empty, ...d }))
-      .catch(() => toast.error("Erro ao carregar dados da oficina"))
+      .catch(() => toast.error("Erro ao carregar dados da empresa"))
       .finally(() => setLoading(false));
   }, []);
 
@@ -83,8 +83,8 @@ function Conhecimento() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-bold">Minha oficina</h1>
-        <p className="text-sm text-muted-foreground">Informações da oficina usadas pelo bot e pela equipe.</p>
+        <h1 className="font-display text-2xl font-bold">Minha empresa</h1>
+        <p className="text-sm text-muted-foreground">Informações da empresa usadas pelo bot e pela equipe.</p>
       </div>
 
       <form onSubmit={salvar} className="grid gap-4 lg:grid-cols-2">
@@ -92,7 +92,7 @@ function Conhecimento() {
           <CardHeader><CardTitle className="text-base">Identificação</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <div className="space-y-2">
-              <Label>Nome da oficina</Label>
+              <Label>Nome da empresa</Label>
               <Input required value={data.name} onChange={set("name")} placeholder="Auto Center Silva" />
             </div>
             <div className="space-y-2">
@@ -105,7 +105,7 @@ function Conhecimento() {
             </div>
             <div className="space-y-2">
               <Label>E-mail</Label>
-              <Input type="email" value={data.email ?? ""} onChange={set("email")} placeholder="contato@oficina.com" />
+              <Input type="email" value={data.email ?? ""} onChange={set("email")} placeholder="contato@empresa.com" />
             </div>
           </CardContent>
         </Card>
@@ -143,7 +143,7 @@ function Conhecimento() {
             </div>
             <div className="space-y-2">
               <Label>Serviços oferecidos</Label>
-              <Textarea rows={4} value={data.services ?? ""} onChange={set("services")} placeholder="Troca de óleo, alinhamento, balanceamento, revisão completa, freios, suspensão." />
+              <Textarea rows={4} value={data.services ?? ""} onChange={set("services")} placeholder="Liste os serviços oferecidos por este cliente, um por linha ou separados por vírgula." />
             </div>
             <div className="space-y-2">
               <Label>Informações adicionais para o bot</Label>

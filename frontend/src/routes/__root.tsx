@@ -69,10 +69,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1.0" },
-      { title: "GCT — Gestão para oficinas mecânicas" },
+      { title: "GCT — Gestão de atendimento" },
       {
         name: "description",
-        content: "GCT centraliza conversas, agendamentos e clientes da sua oficina.",
+        content: "GCT centraliza conversas, agendamentos e contatos dos clientes do grupo.",
       },
     ],
   }),

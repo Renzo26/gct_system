@@ -75,7 +75,7 @@ function Dashboard() {
         <h1 className="font-display text-2xl font-bold">
           Olá, {session?.user.name.split(" ")[0]} 👋
         </h1>
-        <p className="text-sm text-muted-foreground">Visão geral da operação da oficina hoje.</p>
+        <p className="text-sm text-muted-foreground">Visão geral da operação de hoje.</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 
 // Ocultos do menu a pedido do GCT: Agenda (/app/agenda), Meu Assistente
-// (/app/assistente), Minha oficina (/app/configuracoes/conhecimento) e
+// (/app/assistente), Minha empresa (/app/configuracoes/conhecimento) e
 // Clientes (/app/configuracoes/clientes). As telas seguem existindo e
 // funcionando; para reexibir, basta devolver os itens aos arrays abaixo.
 const main = [
@@ -53,7 +53,7 @@ export function AppSidebar() {
           </div>
           <div className="flex flex-col group-data-[collapsible=icon]:hidden">
             <span className="font-display text-base font-bold leading-tight">GCT</span>
-            <span className="text-xs text-sidebar-foreground/60">Gestão de oficina</span>
+            <span className="text-xs text-sidebar-foreground/60">Gestão de atendimento</span>
           </div>
         </div>
       </SidebarHeader>
