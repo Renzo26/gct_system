@@ -354,8 +354,11 @@ class ConversationService:
     async def set_human(
         self, db: AsyncSession, conv: Conversation, redis_service
     ) -> Conversation:
-        await redis_service.set_human_block(conv.waha_chat_id, conv.session)
-        logger.info("set_human | chat=%s redis_key=CloudSolutions_%s_block", conv.waha_chat_id, conv.waha_chat_id)
+        await redis_service.set_human_block(conv.waha_chat_id)
+        logger.info(
+            "set_human | chat=%s redis_key=%s",
+            conv.waha_chat_id, redis_service._key(conv.waha_chat_id),
+        )
         conv.status = ConversationStatus.HUMAN
         await db.flush()
         await db.refresh(conv)
@@ -370,7 +373,7 @@ class ConversationService:
     async def set_bot(
         self, db: AsyncSession, conv: Conversation, redis_service
     ) -> Conversation:
-        await redis_service.del_human_block(conv.waha_chat_id, conv.session)
+        await redis_service.del_human_block(conv.waha_chat_id)
         conv.status = ConversationStatus.BOT
         await db.flush()
         await db.refresh(conv)
