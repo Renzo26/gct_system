@@ -10,6 +10,7 @@ from app.schemas.label import LabelIn, LabelOut
 from app.schemas.message import MessagePage, MessageOut, SendMessageIn
 from app.services.conversation_service import conversation_service
 from app.services.redis_service import RedisService
+from app.services.waha_service import UnsendableChatError
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
 
@@ -75,7 +76,15 @@ async def send_message(
     agent_name = conv.assigned_agent_name or "Agente"
     if conv.status != ConversationStatus.HUMAN:
         await conversation_service.set_human(db, conv, redis)
-    msg = await conversation_service.send_message(db, conv, body.content, agent_name)
+    try:
+        msg = await conversation_service.send_message(db, conv, body.content, agent_name)
+    except UnsendableChatError:
+        # Conversa antiga criada a partir de status/canal: responder ali publicaria
+        # um status na conta do cliente.
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Esta conversa veio de um status/canal do WhatsApp e não aceita resposta.",
+        )
     return MessageOut.model_validate(msg)
 
 

@@ -13,7 +13,7 @@ from app.models.message import Message, MessageType
 from app.models.workshop import Workshop
 from app.schemas.webhook import WahaWebhookRequest
 from app.services.sse_service import broadcaster
-from app.services.waha_service import waha_service
+from app.services.waha_service import is_sendable_chat_id, waha_service
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +66,17 @@ class ConversationService:
 
         waha_chat_id = _normalize_chat_id(raw_chat_id)
         if not waha_chat_id:
+            return
+
+        # Status/stories de contatos chegam como evento de mensagem comum, com
+        # chatId "status@broadcast". Criar conversa a partir disso faz o bot
+        # "responder" o status — e essa resposta sai publicada como status na
+        # conta do cliente, visivel para todos os contatos dele.
+        if not is_sendable_chat_id(waha_chat_id):
+            logger.info(
+                "WAHA webhook | chat=%s nao e conversa enderecavel — ignorando",
+                waha_chat_id,
+            )
             return
 
         existing_msg = await db.scalar(
