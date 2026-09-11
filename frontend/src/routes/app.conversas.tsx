@@ -102,6 +102,11 @@ function Conversas() {
 
   const endRef = useRef<HTMLDivElement>(null);
 
+  // Conversa aberta agora, para o envio (assincrono) nao anexar a mensagem na
+  // tela de outra conversa se o atendente trocar de conversa no meio.
+  const selRef = useRef(sel);
+  useEffect(() => { selRef.current = sel; }, [sel]);
+
   const ativa = conversas.find((c) => c.id === sel) ?? null;
 
   // Carregar conversas
@@ -127,15 +132,24 @@ function Conversas() {
   // Carregar mensagens e marcar como lida ao abrir conversa
   useEffect(() => {
     if (!sel) return;
+    // Limpa na hora da troca: se a busca abaixo falhar, nao pode sobrar a
+    // conversa anterior exibida sob o cabecalho da nova.
+    setMensagens([]);
     setLoadingMsgs(true);
+    // Resposta que chegar depois de o atendente ja ter trocado de conversa e
+    // descartada, senao sobrescreveria as mensagens da conversa aberta.
+    let ativo = true;
     api.get<{ items: Msg[] }>(`/conversations/${sel}/messages`)
-      .then((data) => setMensagens(data.items))
-      .catch(() => {})
-      .finally(() => setLoadingMsgs(false));
+      .then((data) => { if (ativo) setMensagens(data.items); })
+      .catch((err) => {
+        if (ativo) toast.error(err instanceof Error ? err.message : "Erro ao carregar mensagens");
+      })
+      .finally(() => { if (ativo) setLoadingMsgs(false); });
     api.patch(`/conversations/${sel}/read`).catch(() => {});
     setConversas((prev) =>
       prev.map((c) => (c.id === sel ? { ...c, unread_count: 0 } : c))
     );
+    return () => { ativo = false; };
   }, [sel]);
 
   // Auto-scroll para última mensagem
@@ -193,7 +207,10 @@ function Conversas() {
       );
     });
 
-    es.onerror = () => es.close();
+    // Sem onerror -> close(): o EventSource reconecta sozinho quando a conexao
+    // cai (ex.: backend reiniciando num deploy). Fechar aqui matava o tempo real
+    // ate o atendente trocar de conversa. Token invalido responde 401, e com
+    // resposta nao-200 o navegador para de tentar por conta propria.
     return () => es.close();
   }, [sel]);
 
@@ -207,17 +224,22 @@ function Conversas() {
 
   const enviar = async () => {
     if (!sel || !texto.trim() || enviando) return;
+    const convId = sel;
     const conteudo = texto.trim();
     setTexto("");
     setEnviando(true);
     try {
-      const msg = await api.post<Msg>(`/conversations/${sel}/messages`, { content: conteudo });
+      const msg = await api.post<Msg>(`/conversations/${convId}/messages`, { content: conteudo });
+      // Se o atendente trocou de conversa durante o envio, a mensagem ja esta
+      // salva na conversa certa; so nao pode ser anexada na tela da outra.
+      if (selRef.current !== convId) return;
       setMensagens((prev) => {
         if (prev.some((m) => m.id === msg.id)) return prev;
         return [...prev, msg];
       });
-    } catch {
+    } catch (err) {
       setTexto(conteudo);
+      toast.error(err instanceof Error ? err.message : "Erro ao enviar mensagem");
     } finally {
       setEnviando(false);
     }
