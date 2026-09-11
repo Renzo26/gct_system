@@ -103,9 +103,10 @@ async def reopen(
     conv_id: uuid.UUID,
     db: AsyncSession = Depends(get_session),
     workshop_id: uuid.UUID = Depends(get_workshop_id),
+    redis: RedisService = Depends(get_redis_service),
 ):
     conv = await _get_or_404(conv_id, workshop_id, db)
-    return await conversation_service.reopen(db, conv)
+    return await conversation_service.reopen(db, conv, redis)
 
 
 @router.patch("/{conv_id}/name", response_model=ConversationDetail)
@@ -127,9 +128,10 @@ async def resolve(
     conv_id: uuid.UUID,
     db: AsyncSession = Depends(get_session),
     workshop_id: uuid.UUID = Depends(get_workshop_id),
+    redis: RedisService = Depends(get_redis_service),
 ):
     conv = await _get_or_404(conv_id, workshop_id, db)
-    return await conversation_service.resolve(db, conv)
+    return await conversation_service.resolve(db, conv, redis)
 
 
 @router.patch("/{conv_id}/assign", response_model=ConversationDetail)

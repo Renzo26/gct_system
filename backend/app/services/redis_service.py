@@ -7,7 +7,11 @@ from redis.asyncio import Redis
 # mesmo numero atendido nos dois sistemas compartilha o bloqueio.
 _BLOCK_KEY = "CloudSolutions_{chat_id}_block"
 
-_TTL_SEGUNDOS = 900
+# A pausa NAO tem prazo: quando um humano assume, o bot fica calado naquele
+# contato ate alguem reativa-lo (botao "bot" no painel, ou resolver/reabrir a
+# conversa). Antes havia um TTL de 15 min, e ele criava divergencia de estado:
+# a conversa seguia marcada como HUMAN no banco, a chave expirava sozinha e o
+# bot voltava a responder por cima do atendente.
 
 
 class RedisService:
@@ -18,7 +22,7 @@ class RedisService:
         return _BLOCK_KEY.format(chat_id=waha_chat_id)
 
     async def set_human_block(self, waha_chat_id: str) -> None:
-        await self._redis.set(self._key(waha_chat_id), "true", ex=_TTL_SEGUNDOS)
+        await self._redis.set(self._key(waha_chat_id), "true")
 
     async def del_human_block(self, waha_chat_id: str) -> None:
         await self._redis.delete(self._key(waha_chat_id))

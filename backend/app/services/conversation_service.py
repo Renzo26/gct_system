@@ -305,7 +305,12 @@ class ConversationService:
             workshop_id=wid,
         )
 
-    async def reopen(self, db: AsyncSession, conv: Conversation) -> Conversation:
+    async def reopen(
+        self, db: AsyncSession, conv: Conversation, redis_service
+    ) -> Conversation:
+        # Volta para a fila do bot: a pausa nao expira sozinha, entao reabrir
+        # tem que liberar o bot explicitamente.
+        await redis_service.del_human_block(conv.waha_chat_id)
         conv.status = ConversationStatus.UNASSIGNED
         conv.assigned_agent_id = None
         conv.assigned_agent_name = None
@@ -331,7 +336,12 @@ class ConversationService:
         )
         return conv
 
-    async def resolve(self, db: AsyncSession, conv: Conversation) -> Conversation:
+    async def resolve(
+        self, db: AsyncSession, conv: Conversation, redis_service
+    ) -> Conversation:
+        # Atendimento encerrado: libera o bot para atender a proxima duvida
+        # desse contato, senao ele ficaria calado para sempre.
+        await redis_service.del_human_block(conv.waha_chat_id)
         conv.status = ConversationStatus.RESOLVED
         conv.unread_count = 0
         await db.flush()
