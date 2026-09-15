@@ -3,14 +3,15 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_session, get_workshop_id, _bearer
+from app.api.deps import get_current_user, get_session, get_workshop_id, _bearer
 from fastapi.security import HTTPAuthorizationCredentials
 from jose import JWTError
 
 from app.models.user import User, UserRole
+from app.models.user_workshop_access import UserWorkshopAccess
 from app.schemas.auth import UserOut
 from app.services.auth_service import AuthError, decode_token, hash_password
 
@@ -27,6 +28,21 @@ class UserCreateIn(BaseModel):
 class UserUpdateIn(BaseModel):
     nome: str
     role: str
+
+
+class GrantAccessIn(BaseModel):
+    email: EmailStr
+
+
+class WorkshopUserOut(UserOut):
+    # Usuário de outro cliente com acesso concedido a este.
+    is_guest: bool = False
+
+
+def _out(user: User, workshop_id: uuid.UUID) -> WorkshopUserOut:
+    out = WorkshopUserOut.model_validate(user)
+    out.is_guest = user.workshop_id != workshop_id
+    return out
 
 
 async def _get_current_user_id(
@@ -70,18 +86,63 @@ async def _get_or_404(user_id: uuid.UUID, workshop_id: uuid.UUID, db: AsyncSessi
     return user
 
 
-@router.get("", response_model=list[UserOut])
+@router.get("", response_model=list[WorkshopUserOut])
 async def list_users(
     db: AsyncSession = Depends(get_session),
     workshop_id: uuid.UUID = Depends(get_workshop_id),
 ):
-    result = await db.scalars(
-        select(User).where(User.workshop_id == workshop_id, User.is_active == True)  # noqa: E712
+    guests = select(UserWorkshopAccess.user_id).where(
+        UserWorkshopAccess.workshop_id == workshop_id
     )
-    return result.all()
+    result = await db.scalars(
+        select(User)
+        .where(or_(User.workshop_id == workshop_id, User.id.in_(guests)))
+        .where(User.is_active == True)  # noqa: E712
+        .order_by(User.name)
+    )
+    return [_out(u, workshop_id) for u in result.all()]
 
 
-@router.post("", response_model=UserOut, status_code=status.HTTP_201_CREATED)
+@router.post("/access", response_model=WorkshopUserOut, status_code=status.HTTP_201_CREATED)
+async def grant_access(
+    body: GrantAccessIn,
+    db: AsyncSession = Depends(get_session),
+    workshop_id: uuid.UUID = Depends(get_workshop_id),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role == UserRole.AGENT:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Apenas administradores podem dar acesso a este cliente",
+        )
+    user = await db.scalar(
+        select(User).where(User.email == body.email, User.is_active == True)  # noqa: E712
+    )
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Nenhum usuário com este e-mail. Use \"Novo usuário\" para criar.",
+        )
+    if user.is_superadmin or user.workshop_id == workshop_id:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Este usuário já tem acesso a este cliente"
+        )
+    exists = await db.scalar(
+        select(UserWorkshopAccess).where(
+            UserWorkshopAccess.user_id == user.id,
+            UserWorkshopAccess.workshop_id == workshop_id,
+        )
+    )
+    if exists:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Este usuário já tem acesso a este cliente"
+        )
+    db.add(UserWorkshopAccess(user_id=user.id, workshop_id=workshop_id))
+    await db.commit()
+    return _out(user, workshop_id)
+
+
+@router.post("", response_model=WorkshopUserOut, status_code=status.HTTP_201_CREATED)
 async def create_user(
     body: UserCreateIn,
     db: AsyncSession = Depends(get_session),
@@ -103,10 +164,10 @@ async def create_user(
     db.add(user)
     await db.commit()
     await db.refresh(user)
-    return user
+    return _out(user, workshop_id)
 
 
-@router.put("/{user_id}", response_model=UserOut)
+@router.put("/{user_id}", response_model=WorkshopUserOut)
 async def update_user(
     user_id: uuid.UUID,
     body: UserUpdateIn,
@@ -120,7 +181,7 @@ async def update_user(
     user.role = role
     await db.commit()
     await db.refresh(user)
-    return user
+    return _out(user, workshop_id)
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -135,6 +196,17 @@ async def delete_user(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Não é possível remover seu próprio usuário",
         )
+    # Convidado de outro cliente: só perde o acesso a este, o usuário continua ativo.
+    access = await db.scalar(
+        select(UserWorkshopAccess).where(
+            UserWorkshopAccess.user_id == user_id,
+            UserWorkshopAccess.workshop_id == workshop_id,
+        )
+    )
+    if access:
+        await db.delete(access)
+        await db.commit()
+        return
     user = await _get_or_404(user_id, workshop_id, db)
     user.is_active = False
     await db.commit()

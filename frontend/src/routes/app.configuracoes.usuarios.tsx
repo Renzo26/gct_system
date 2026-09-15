@@ -1,15 +1,33 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, UserPlus } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { api } from "@/lib/api";
 
 export const Route = createFileRoute("/app/configuracoes/usuarios")({
@@ -17,7 +35,13 @@ export const Route = createFileRoute("/app/configuracoes/usuarios")({
   component: UsuariosPage,
 });
 
-type Usuario = { id: string; name: string; email: string; role: "ADMIN" | "AGENT" };
+type Usuario = {
+  id: string;
+  name: string;
+  email: string;
+  role: "ADMIN" | "AGENT";
+  is_guest: boolean;
+};
 type RoleValue = "ADMIN" | "AGENT";
 
 function roleLabel(role: RoleValue) {
@@ -32,9 +56,11 @@ function UsuariosPage() {
   const [editUser, setEditUser] = useState<Usuario | null>(null);
   const [novoRole, setNovoRole] = useState<RoleValue>("AGENT");
   const [editRole, setEditRole] = useState<RoleValue>("AGENT");
+  const [acessoOpen, setAcessoOpen] = useState(false);
 
   useEffect(() => {
-    api.get<Usuario[]>("/users")
+    api
+      .get<Usuario[]>("/users")
       .then(setUsers)
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -54,7 +80,9 @@ function UsuariosPage() {
       setUsers((arr) => [...arr, created]);
       setNovoOpen(false);
       setNovoRole("AGENT");
-    } catch { /* ignora */ } finally {
+    } catch {
+      /* ignora */
+    } finally {
       setSaving(false);
     }
   };
@@ -71,7 +99,25 @@ function UsuariosPage() {
       });
       setUsers((arr) => arr.map((u) => (u.id === editUser.id ? updated : u)));
       setEditUser(null);
-    } catch { /* ignora */ } finally {
+    } catch {
+      /* ignora */
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const darAcesso = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    setSaving(true);
+    try {
+      const user = await api.post<Usuario>("/users/access", { email: String(f.get("email")) });
+      setUsers((arr) => [...arr, user]);
+      setAcessoOpen(false);
+      toast.success(`${user.name} agora tem acesso a este cliente`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao dar acesso");
+    } finally {
       setSaving(false);
     }
   };
@@ -93,14 +139,26 @@ function UsuariosPage() {
           <h1 className="font-display text-2xl font-bold">Usuários</h1>
           <p className="text-sm text-muted-foreground">Gerencie a equipe.</p>
         </div>
-        <Button onClick={() => { setNovoOpen(true); setNovoRole("AGENT"); }}>
-          <Plus className="mr-1 h-4 w-4" /> Novo usuário
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setAcessoOpen(true)}>
+            <UserPlus className="mr-1 h-4 w-4" /> Dar acesso
+          </Button>
+          <Button
+            onClick={() => {
+              setNovoOpen(true);
+              setNovoRole("AGENT");
+            }}
+          >
+            <Plus className="mr-1 h-4 w-4" /> Novo usuário
+          </Button>
+        </div>
       </div>
 
       <div className="rounded-xl border bg-card">
         {loading ? (
-          <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+          <div className="flex justify-center py-12">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
         ) : (
           <Table>
             <TableHeader>
@@ -114,7 +172,10 @@ function UsuariosPage() {
             <TableBody>
               {users.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="py-10 text-center text-sm text-muted-foreground">
+                  <TableCell
+                    colSpan={4}
+                    className="py-10 text-center text-sm text-muted-foreground"
+                  >
                     Nenhum usuário cadastrado.
                   </TableCell>
                 </TableRow>
@@ -124,15 +185,33 @@ function UsuariosPage() {
                   <TableCell className="font-medium">{u.name}</TableCell>
                   <TableCell className="text-muted-foreground">{u.email}</TableCell>
                   <TableCell>
-                    <Badge className={u.role === "ADMIN" ? "bg-primary/15 text-primary border-0" : "bg-muted text-muted-foreground border-0"}>
+                    <Badge
+                      className={
+                        u.role === "ADMIN"
+                          ? "bg-primary/15 text-primary border-0"
+                          : "bg-muted text-muted-foreground border-0"
+                      }
+                    >
                       {roleLabel(u.role)}
                     </Badge>
+                    {u.is_guest && (
+                      <Badge variant="outline" className="ml-2">
+                        Outro cliente
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => abrirEdit(u)}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => deletar(u.id)}>
+                    {!u.is_guest && (
+                      <Button variant="ghost" size="icon" onClick={() => abrirEdit(u)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => deletar(u.id)}
+                      title={u.is_guest ? "Remover acesso a este cliente" : "Remover usuário"}
+                    >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </TableCell>
@@ -146,15 +225,28 @@ function UsuariosPage() {
       {/* Dialog: Novo usuário */}
       <Dialog open={novoOpen} onOpenChange={setNovoOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Adicionar usuário</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Adicionar usuário</DialogTitle>
+          </DialogHeader>
           <form onSubmit={criar} className="space-y-3">
-            <div className="space-y-2"><Label>Nome</Label><Input name="nome" required /></div>
-            <div className="space-y-2"><Label>E-mail</Label><Input name="email" type="email" required /></div>
-            <div className="space-y-2"><Label>Senha inicial</Label><Input name="password" type="password" required minLength={6} /></div>
+            <div className="space-y-2">
+              <Label>Nome</Label>
+              <Input name="nome" required />
+            </div>
+            <div className="space-y-2">
+              <Label>E-mail</Label>
+              <Input name="email" type="email" required />
+            </div>
+            <div className="space-y-2">
+              <Label>Senha inicial</Label>
+              <Input name="password" type="password" required minLength={6} />
+            </div>
             <div className="space-y-2">
               <Label>Perfil</Label>
               <Select value={novoRole} onValueChange={(v) => setNovoRole(v as RoleValue)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ADMIN">Admin</SelectItem>
                   <SelectItem value="AGENT">Atendente</SelectItem>
@@ -170,10 +262,41 @@ function UsuariosPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog: Editar usuário */}
-      <Dialog open={!!editUser} onOpenChange={(v) => { if (!v) setEditUser(null); }}>
+      {/* Dialog: Dar acesso a usuário de outro cliente */}
+      <Dialog open={acessoOpen} onOpenChange={setAcessoOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Editar usuário</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Dar acesso a um usuário existente</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={darAcesso} className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              O usuário continua no cliente dele e passa a ver também este cliente, escolhendo qual
+              abrir ao entrar.
+            </p>
+            <div className="space-y-2">
+              <Label>E-mail do usuário</Label>
+              <Input name="email" type="email" required />
+            </div>
+            <DialogFooter>
+              <Button type="submit" disabled={saving}>
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Dar acesso"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Editar usuário */}
+      <Dialog
+        open={!!editUser}
+        onOpenChange={(v) => {
+          if (!v) setEditUser(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar usuário</DialogTitle>
+          </DialogHeader>
           {editUser && (
             <form onSubmit={salvarEdit} className="space-y-3">
               <div className="space-y-2">
@@ -187,7 +310,9 @@ function UsuariosPage() {
               <div className="space-y-2">
                 <Label>Perfil</Label>
                 <Select value={editRole} onValueChange={(v) => setEditRole(v as RoleValue)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ADMIN">Admin</SelectItem>
                     <SelectItem value="AGENT">Atendente</SelectItem>
@@ -195,7 +320,9 @@ function UsuariosPage() {
                 </Select>
               </div>
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setEditUser(null)}>Cancelar</Button>
+                <Button type="button" variant="outline" onClick={() => setEditUser(null)}>
+                  Cancelar
+                </Button>
                 <Button type="submit" disabled={saving}>
                   {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}
                 </Button>

@@ -4,12 +4,13 @@ from typing import Optional
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.config import get_settings
 from app.models.user import User, UserRole
+from app.models.user_workshop_access import UserWorkshopAccess
 from app.models.workshop import Workshop
 
 _pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -125,20 +126,23 @@ class AuthService:
             raise AuthError("Usuário não encontrado")
         return user
 
+    @staticmethod
+    def _accessible(stmt, user: User):
+        if user.is_superadmin:
+            return stmt
+        extra = select(UserWorkshopAccess.workshop_id).where(
+            UserWorkshopAccess.user_id == user.id
+        )
+        return stmt.where(or_(Workshop.id == user.workshop_id, Workshop.id.in_(extra)))
+
     async def list_accessible_workshops(self, db: AsyncSession, user: User) -> list[Workshop]:
-        stmt = select(Workshop).order_by(Workshop.name)
-        if not user.is_superadmin:
-            if user.workshop_id is None:
-                return []
-            stmt = stmt.where(Workshop.id == user.workshop_id)
+        stmt = self._accessible(select(Workshop).order_by(Workshop.name), user)
         result = await db.scalars(stmt)
         return list(result.all())
 
     async def can_access(self, db: AsyncSession, user: User, workshop_id: uuid.UUID) -> bool:
-        if not user.is_superadmin and user.workshop_id != workshop_id:
-            return False
-        exists = await db.scalar(select(Workshop.id).where(Workshop.id == workshop_id))
-        return exists is not None
+        stmt = self._accessible(select(Workshop.id).where(Workshop.id == workshop_id), user)
+        return await db.scalar(stmt) is not None
 
     async def select_workshop(
         self, db: AsyncSession, user: User, workshop_id: uuid.UUID
@@ -146,7 +150,7 @@ class AuthService:
         workshop = await db.scalar(select(Workshop).where(Workshop.id == workshop_id))
         if not workshop:
             raise ForbiddenError("Cliente não encontrado")
-        if not user.is_superadmin and user.workshop_id != workshop_id:
+        if not await self.can_access(db, user, workshop_id):
             raise ForbiddenError("Você não tem acesso a este cliente")
         return workshop
 

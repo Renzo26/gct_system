@@ -1,5 +1,6 @@
 from app.models.workshop import Workshop
 from app.models.user import User, UserRole
+from app.models.user_workshop_access import UserWorkshopAccess
 from app.models.conversation import Conversation, ConversationStatus
 from app.models.message import Message, MessageType
 from app.models.label import ConversationLabel
@@ -11,6 +12,7 @@ __all__ = [
     "Workshop",
     "User",
     "UserRole",
+    "UserWorkshopAccess",
     "Conversation",
     "ConversationStatus",
     "Message",
