@@ -13,6 +13,7 @@ class WorkshopCreateIn(BaseModel):
     city: Optional[str] = None
     state: Optional[str] = None
     waha_session: Optional[str] = None
+    bot_name: Optional[str] = None
 
 
 class WorkshopUpdateIn(BaseModel):
@@ -23,6 +24,7 @@ class WorkshopUpdateIn(BaseModel):
     city: Optional[str] = None
     state: Optional[str] = None
     waha_session: Optional[str] = None
+    bot_name: Optional[str] = None
 
 
 class WorkshopAdminOut(BaseModel):
@@ -34,6 +36,7 @@ class WorkshopAdminOut(BaseModel):
     city: Optional[str] = None
     state: Optional[str] = None
     waha_session: Optional[str] = None
+    bot_name: Optional[str] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

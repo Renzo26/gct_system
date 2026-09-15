@@ -12,13 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { api } from "@/lib/api";
-import {
-  clearAuth,
-  getSession,
-  isSuperadmin,
-  setAuth,
-  type TokenResponse,
-} from "@/lib/auth";
+import { clearAuth, getSession, isSuperadmin, setAuth, type TokenResponse } from "@/lib/auth";
 
 export const Route = createFileRoute("/selecionar-cliente")({
   head: () => ({ meta: [{ title: "Selecionar cliente — GCT" }] }),
@@ -46,6 +40,8 @@ function SelecionarClientePage() {
 
   const [dialogAberto, setDialogAberto] = useState(false);
   const [novoNome, setNovoNome] = useState("");
+  const [novaSessao, setNovaSessao] = useState("");
+  const [novoBotName, setNovoBotName] = useState("");
   const [salvando, setSalvando] = useState(false);
 
   const session = getSession();
@@ -93,8 +89,14 @@ function SelecionarClientePage() {
     setSalvando(true);
     setError("");
     try {
-      await api.post("/workshops", { name: novoNome });
+      await api.post("/workshops", {
+        name: novoNome.trim(),
+        waha_session: novaSessao.trim() || null,
+        bot_name: novoBotName.trim() || null,
+      });
       setNovoNome("");
+      setNovaSessao("");
+      setNovoBotName("");
       setDialogAberto(false);
       await carregar();
     } catch (err) {
@@ -203,22 +205,52 @@ function SelecionarClientePage() {
             <DialogHeader>
               <DialogTitle>Novo cliente</DialogTitle>
             </DialogHeader>
-            <div className="py-4">
-              <Label htmlFor="nome">Nome do cliente</Label>
-              <Input
-                id="nome"
-                value={novoNome}
-                onChange={(e) => setNovoNome(e.target.value)}
-                placeholder="Ex.: Auto Center Silva"
-                required
-                className="mt-1.5"
-              />
+            <div className="space-y-4 py-4">
+              <div>
+                <Label htmlFor="nome">Nome do cliente</Label>
+                <Input
+                  id="nome"
+                  value={novoNome}
+                  onChange={(e) => setNovoNome(e.target.value)}
+                  placeholder="Ex.: Clínica Silva"
+                  required
+                  className="mt-1.5"
+                />
+              </div>
+              <div>
+                <Label htmlFor="sessao">Sessão do WAHA</Label>
+                <Input
+                  id="sessao"
+                  value={novaSessao}
+                  onChange={(e) => setNovaSessao(e.target.value)}
+                  placeholder="Ex.: ClinicaSilva"
+                  required
+                  className="mt-1.5"
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Nome exato da sessão no WAHA (diferencia maiúsculas).
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="botname">Botname do fluxo n8n</Label>
+                <Input
+                  id="botname"
+                  value={novoBotName}
+                  onChange={(e) => setNovoBotName(e.target.value)}
+                  placeholder={novaSessao.trim() || "Igual à sessão"}
+                  className="mt-1.5"
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Valor de "Botname" na Configuração Global do fluxo n8n deste cliente. Em branco,
+                  usa o nome da sessão.
+                </p>
+              </div>
             </div>
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={() => setDialogAberto(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={salvando || !novoNome.trim()}>
+              <Button type="submit" disabled={salvando || !novoNome.trim() || !novaSessao.trim()}>
                 {salvando ? "Criando..." : "Criar cliente"}
               </Button>
             </DialogFooter>

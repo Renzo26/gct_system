@@ -21,16 +21,23 @@ async def _get_or_404(workshop_id: uuid.UUID, db: AsyncSession) -> Workshop:
     return workshop
 
 
+def _normalize(body) -> dict:
+    data = body.model_dump()
+    for field in ("waha_session", "bot_name"):
+        data[field] = (data[field] or "").strip() or None
+    # Sem Botname explicito, o fluxo n8n do cliente deve usar a propria sessao.
+    data["bot_name"] = data["bot_name"] or data["waha_session"]
+    return data
+
+
 async def _ensure_unique(
-    db: AsyncSession, body, current_id: uuid.UUID | None = None
+    db: AsyncSession, data: dict, current: Workshop | None = None
 ) -> None:
-    for field in ("cnpj", "waha_session"):
-        value = getattr(body, field)
-        if not value:
+    for field in ("cnpj", "waha_session", "bot_name"):
+        value = data[field]
+        if not value or (current is not None and getattr(current, field) == value):
             continue
         stmt = select(Workshop.id).where(getattr(Workshop, field) == value)
-        if current_id is not None:
-            stmt = stmt.where(Workshop.id != current_id)
         if await db.scalar(stmt) is not None:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -53,8 +60,9 @@ async def create_workshop(
     db: AsyncSession = Depends(get_session),
     _: User = Depends(require_superadmin),
 ):
-    await _ensure_unique(db, body)
-    workshop = Workshop(**body.model_dump())
+    data = _normalize(body)
+    await _ensure_unique(db, data)
+    workshop = Workshop(**data)
     db.add(workshop)
     await db.commit()
     await db.refresh(workshop)
@@ -69,8 +77,9 @@ async def update_workshop(
     _: User = Depends(require_superadmin),
 ):
     workshop = await _get_or_404(workshop_id, db)
-    await _ensure_unique(db, body, current_id=workshop_id)
-    for field, value in body.model_dump().items():
+    data = _normalize(body)
+    await _ensure_unique(db, data, current=workshop)
+    for field, value in data.items():
         setattr(workshop, field, value)
     await db.commit()
     await db.refresh(workshop)

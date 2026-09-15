@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text, func
+from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -19,6 +19,11 @@ class ConversationStatus(str, enum.Enum):
 
 class Conversation(Base):
     __tablename__ = "conversations"
+    # O mesmo contato pode falar com dois clientes (sessoes WAHA diferentes):
+    # o chatId so e unico dentro de um cliente.
+    __table_args__ = (
+        UniqueConstraint("workshop_id", "waha_chat_id", name="uq_conversations_workshop_chat"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
@@ -30,7 +35,7 @@ class Conversation(Base):
         index=True,
     )
     waha_chat_id: Mapped[str] = mapped_column(
-        String(100), unique=True, nullable=False, index=True
+        String(100), nullable=False, index=True
     )
     lead_name: Mapped[str] = mapped_column(String(200), nullable=False)
     lead_phone: Mapped[str] = mapped_column(String(20), nullable=False)

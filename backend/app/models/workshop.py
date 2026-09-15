@@ -27,6 +27,9 @@ class Workshop(Base):
     services: Mapped[Optional[str]] = mapped_column(String(2000), nullable=True)
     bot_info: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     waha_session: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, unique=True)
+    # Prefixo da chave de pausa do bot no Redis: tem que ser igual ao "Botname"
+    # do no "Configuração Global" do fluxo n8n desse cliente.
+    bot_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

@@ -33,6 +33,11 @@ def _detect_type(payload) -> MessageType:
     return MessageType.DOCUMENT
 
 
+async def _bot_name(db: AsyncSession, conv: Conversation) -> str:
+    workshop = await db.get(Workshop, conv.workshop_id)
+    return workshop.bot_name or workshop.waha_session or ""
+
+
 class ConversationService:
 
     async def process_webhook(self, db: AsyncSession, body: WahaWebhookRequest) -> None:
@@ -79,12 +84,6 @@ class ConversationService:
             )
             return
 
-        existing_msg = await db.scalar(
-            select(Message).where(Message.waha_message_id == p.id)
-        )
-        if existing_msg:
-            return
-
         conv = await db.scalar(
             select(Conversation)
             .where(Conversation.waha_chat_id == waha_chat_id)
@@ -94,6 +93,13 @@ class ConversationService:
 
         # Se não existe conversa e é mensagem do bot, ignora (não cria conversa sem lead)
         if conv is None and is_from_me:
+            return
+
+        if conv is not None and await db.scalar(
+            select(Message.id)
+            .where(Message.conversation_id == conv.id)
+            .where(Message.waha_message_id == p.id)
+        ):
             return
 
         d = p.inner_data
@@ -310,7 +316,7 @@ class ConversationService:
     ) -> Conversation:
         # Volta para a fila do bot: a pausa nao expira sozinha, entao reabrir
         # tem que liberar o bot explicitamente.
-        await redis_service.del_human_block(conv.waha_chat_id)
+        await redis_service.del_human_block(await _bot_name(db, conv), conv.waha_chat_id)
         conv.status = ConversationStatus.UNASSIGNED
         conv.assigned_agent_id = None
         conv.assigned_agent_name = None
@@ -341,7 +347,7 @@ class ConversationService:
     ) -> Conversation:
         # Atendimento encerrado: libera o bot para atender a proxima duvida
         # desse contato, senao ele ficaria calado para sempre.
-        await redis_service.del_human_block(conv.waha_chat_id)
+        await redis_service.del_human_block(await _bot_name(db, conv), conv.waha_chat_id)
         conv.status = ConversationStatus.RESOLVED
         conv.unread_count = 0
         await db.flush()
@@ -375,10 +381,11 @@ class ConversationService:
     async def set_human(
         self, db: AsyncSession, conv: Conversation, redis_service
     ) -> Conversation:
-        await redis_service.set_human_block(conv.waha_chat_id)
+        bot_name = await _bot_name(db, conv)
+        await redis_service.set_human_block(bot_name, conv.waha_chat_id)
         logger.info(
             "set_human | chat=%s redis_key=%s",
-            conv.waha_chat_id, redis_service._key(conv.waha_chat_id),
+            conv.waha_chat_id, redis_service.key(bot_name, conv.waha_chat_id),
         )
         conv.status = ConversationStatus.HUMAN
         await db.flush()
@@ -394,7 +401,7 @@ class ConversationService:
     async def set_bot(
         self, db: AsyncSession, conv: Conversation, redis_service
     ) -> Conversation:
-        await redis_service.del_human_block(conv.waha_chat_id)
+        await redis_service.del_human_block(await _bot_name(db, conv), conv.waha_chat_id)
         conv.status = ConversationStatus.BOT
         await db.flush()
         await db.refresh(conv)
